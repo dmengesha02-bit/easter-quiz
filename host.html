@@ -759,6 +759,180 @@ function showFinal() {
 }
 
 init();
+
+// ── MUSIC ENGINE ─────────────────────────────────────────────────────────
+let audioCtx = null;
+let musicNodes = [];
+let currentMusic = null;
+let musicEnabled = true;
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function stopMusic() {
+  musicNodes.forEach(n => { try { n.stop(); } catch(e){} });
+  musicNodes = [];
+  currentMusic = null;
+}
+
+function playLobbyMusic() {
+  if (!musicEnabled) return;
+  stopMusic();
+  currentMusic = 'lobby';
+  const ctx = getCtx();
+  const baseFreqs = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880];
+  const pattern = [0,2,4,7,4,2,0,5,2,4,7,9,7,4,2,0];
+
+  function chime(freq, time, vol) {
+    ['sine','sine'].forEach((type, ti) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq * (ti+1), time);
+      g.gain.setValueAtTime(0, time);
+      g.gain.linearRampToValueAtTime(vol * (ti===0?1:0.3), time+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, time + (ti===0?1.8:1.2));
+      osc.start(time); osc.stop(time + 2);
+      musicNodes.push(osc);
+    });
+  }
+
+  function loop(startTime) {
+    if (currentMusic !== 'lobby') return;
+    pattern.forEach((ni, i) => chime(baseFreqs[ni % baseFreqs.length], startTime + i*0.45, 0.12));
+    setTimeout(() => loop(ctx.currentTime + 0.05), (pattern.length*0.45 - 0.1)*1000);
+  }
+  loop(ctx.currentTime + 0.1);
+}
+
+function playQuestionMusic() {
+  if (!musicEnabled) return;
+  stopMusic();
+  currentMusic = 'question';
+  const ctx = getCtx();
+  const interval = 60/110;
+  const bassNotes = [130.81, 146.83, 164.81, 174.61];
+  const melNotes  = [523.25, 587.33, 659.25, 698.46, 783.99];
+  let bi = 0;
+
+  function beat() {
+    if (currentMusic !== 'question') return;
+    const t = ctx.currentTime;
+
+    // Kick
+    const kick = ctx.createOscillator(); const kg = ctx.createGain();
+    kick.connect(kg); kg.connect(ctx.destination);
+    kick.type = 'sine';
+    kick.frequency.setValueAtTime(150,t); kick.frequency.exponentialRampToValueAtTime(50,t+0.1);
+    kg.gain.setValueAtTime(0.28,t); kg.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+    kick.start(t); kick.stop(t+0.22); musicNodes.push(kick);
+
+    // Bass every 2 beats
+    if (bi%2===0) {
+      const b = ctx.createOscillator(); const bg = ctx.createGain();
+      b.connect(bg); bg.connect(ctx.destination);
+      b.type='triangle'; b.frequency.setValueAtTime(bassNotes[Math.floor(bi/2)%bassNotes.length],t);
+      bg.gain.setValueAtTime(0.14,t); bg.gain.exponentialRampToValueAtTime(0.001,t+interval*1.8);
+      b.start(t); b.stop(t+interval*2); musicNodes.push(b);
+    }
+
+    // Melody every 4 beats
+    if (bi%4===0) {
+      const m = ctx.createOscillator(); const mg = ctx.createGain();
+      m.connect(mg); mg.connect(ctx.destination);
+      m.type='square'; m.frequency.setValueAtTime(melNotes[Math.floor(bi/4)%melNotes.length],t);
+      mg.gain.setValueAtTime(0.055,t); mg.gain.exponentialRampToValueAtTime(0.001,t+interval*3);
+      m.start(t); m.stop(t+interval*3); musicNodes.push(m);
+    }
+    bi++;
+    setTimeout(beat, interval*1000);
+  }
+  beat();
+}
+
+function playWinnerMusic() {
+  if (!musicEnabled) return;
+  stopMusic();
+  currentMusic = 'winner';
+  const ctx = getCtx();
+  const fanfare = [
+    [523.25,0,0.3],[659.25,0.15,0.3],[783.99,0.3,0.3],[1046.5,0.45,0.8],
+    [783.99,0.5,0.6],[659.25,0.55,0.6],[523.25,0.6,0.4],[1046.5,1.0,1.2],[880,1.05,1.0],[659.25,1.1,0.8]
+  ];
+  fanfare.forEach(([freq,time,dur]) => {
+    ['sawtooth','sine'].forEach((type,ti) => {
+      const osc = ctx.createOscillator(); const g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type=type; osc.frequency.setValueAtTime(freq*(ti?2:1), ctx.currentTime+time);
+      g.gain.setValueAtTime(0,ctx.currentTime+time);
+      g.gain.linearRampToValueAtTime(ti?0.07:0.17,ctx.currentTime+time+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+time+dur);
+      osc.start(ctx.currentTime+time); osc.stop(ctx.currentTime+time+dur+0.1);
+      musicNodes.push(osc);
+    });
+  });
+  setTimeout(() => { if(currentMusic==='winner') playWinnerMusic(); }, 2800);
+}
+
+window.toggleMusic = function() {
+  musicEnabled = !musicEnabled;
+  const btn = document.getElementById('music-toggle');
+  if (!musicEnabled) { stopMusic(); btn.textContent='🔇 Music Off'; }
+  else { btn.textContent='🔊 Music On'; if(currentMusic===null) playLobbyMusic(); }
+};
+
+// Patch startGame to switch to question music
+const _origStart = window.startGame;
+window.startGame = async function() {
+  stopMusic();
+  await _origStart();
+  playQuestionMusic();
+};
+
+// Patch showNextQuestion to resume question music after leaderboard
+const _origNext = window.showNextQuestion;
+window.showNextQuestion = function() {
+  _origNext();
+  const gs = document.getElementById('game-screen');
+  if (gs && gs.style.display !== 'none') playQuestionMusic();
+};
+
+// Patch revealAnswer to stop music on reveal
+const _origReveal = window.revealAnswer;
+window.revealAnswer = function() {
+  stopMusic();
+  _origReveal();
+};
+
+// Patch showFinal to play winner music
+const _origFinal = showFinal;
+// showFinal is called inside showNextQuestion so we override it here
+window._playWinnerOnFinal = true;
+const origShowNextQ = window.showNextQuestion;
+window.showNextQuestion = function() {
+  if (currentQ + 1 >= QUESTIONS.length) {
+    stopMusic();
+    setTimeout(playWinnerMusic, 600);
+  }
+  origShowNextQ();
+};
+
+// Start lobby music on first click
+document.addEventListener('click', function startAudio() {
+  if (currentMusic === null && musicEnabled) playLobbyMusic();
+}, { once: true });
+
+// Music toggle button
+const musicBtn = document.createElement('button');
+musicBtn.id = 'music-toggle';
+musicBtn.textContent = '🔊 Music On';
+musicBtn.onclick = window.toggleMusic;
+musicBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:999;background:rgba(44,24,16,0.9);border:1.5px solid #D4A843;color:#F5D98B;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;padding:10px 18px;border-radius:50px;cursor:pointer;';
+document.body.appendChild(musicBtn);
+// ─────────────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
