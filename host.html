@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Easter Quiz — Host</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #D4A843;
+    --gold-light: #F5D98B;
+    --rose: #C0546A;
+    --rose-light: #F2A0B0;
+    --sage: #5A8A5E;
+    --sage-light: #A8D4AB;
+    --sky: #4A7FB5;
+    --cream: #FFF8F0;
+    --deep: #2C1810;
+    --parchment: #F5EDD8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--deep);
+    color: var(--cream);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Decorative cross pattern background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(212,168,67,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(192,84,106,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 60% 80%, rgba(90,138,94,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; }
+
+  /* LOBBY */
+  #lobby {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .cross-icon {
+    font-size: 48px;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 0 20px rgba(212,168,67,0.6));
+  }
+
+  .title-main {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(36px, 6vw, 72px);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--rose-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+
+  .title-sub {
+    font-size: 18px;
+    color: rgba(255,248,240,0.6);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+
+  .room-code-box {
+    background: rgba(212,168,67,0.12);
+    border: 2px solid var(--gold);
+    border-radius: 20px;
+    padding: 2rem 3rem;
+    margin-bottom: 2rem;
+  }
+
+  .room-code-label {
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+
+  .room-code-value {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(48px, 10vw, 96px);
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 12px;
+    line-height: 1;
+  }
+
+  .join-url {
+    font-size: 16px;
+    color: rgba(255,248,240,0.5);
+    margin-top: 0.75rem;
+  }
+
+  .join-url span { color: var(--gold); font-weight: 700; }
+
+  .players-section { margin-bottom: 2.5rem; width: 100%; max-width: 800px; }
+
+  .players-label {
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,248,240,0.5);
+    margin-bottom: 1rem;
+  }
+
+  .players-count {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--sage-light);
+    margin-bottom: 1rem;
+  }
+
+  .players-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    min-height: 60px;
+  }
+
+  .player-chip {
+    background: rgba(90,138,94,0.2);
+    border: 1px solid var(--sage);
+    border-radius: 50px;
+    padding: 8px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sage-light);
+    animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .start-btn {
+    background: linear-gradient(135deg, var(--gold), var(--rose));
+    border: none;
+    border-radius: 50px;
+    padding: 18px 56px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 8px 30px rgba(212,168,67,0.4);
+  }
+
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(212,168,67,0.6); }
+  .start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* GAME SCREEN */
+  #game-screen { display: none; min-height: 100vh; padding: 1.5rem; }
+
+  .game-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .q-counter {
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,248,240,0.5);
+  }
+
+  .q-counter span { color: var(--gold); font-size: 20px; font-weight: 800; }
+
+  .timer-circle {
+    width: 72px; height: 72px;
+    position: relative;
+  }
+
+  .timer-circle svg { transform: rotate(-90deg); }
+
+  .timer-circle circle {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.1s linear;
+  }
+
+  .timer-bg { stroke: rgba(255,255,255,0.1); }
+  .timer-fg { stroke: var(--gold); stroke-dasharray: 201; stroke-dashoffset: 0; }
+
+  .timer-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--gold-light);
+  }
+
+  .answer-counts {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255,248,240,0.5);
+  }
+
+  .answer-counts span { color: var(--cream); font-weight: 700; }
+
+  .question-box {
+    background: rgba(255,248,240,0.05);
+    border: 1px solid rgba(212,168,67,0.3);
+    border-radius: 20px;
+    padding: 2rem 2.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .q-category {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .q-text {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(20px, 3vw, 32px);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--cream);
+  }
+
+  .answers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 1.5rem;
+  }
+
+  .answer-tile {
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    font-size: clamp(15px, 2vw, 18px);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .answer-tile.a0 { background: rgba(74,127,181,0.25); border: 1.5px solid var(--sky); }
+  .answer-tile.a1 { background: rgba(192,84,106,0.25); border: 1.5px solid var(--rose); }
+  .answer-tile.a2 { background: rgba(90,138,94,0.25); border: 1.5px solid var(--sage); }
+  .answer-tile.a3 { background: rgba(212,168,67,0.25); border: 1.5px solid var(--gold); }
+
+  .answer-tile.correct { background: rgba(90,138,94,0.6) !important; border-color: var(--sage-light) !important; transform: scale(1.02); }
+  .answer-tile.wrong { opacity: 0.35; }
+
+  .answer-shape {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800;
+  }
+
+  .a0 .answer-shape { background: var(--sky); }
+  .a1 .answer-shape { background: var(--rose); }
+  .a2 .answer-shape { background: var(--sage); }
+  .a3 .answer-shape { background: var(--gold); color: var(--deep); }
+
+  .answer-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 4px;
+    background: rgba(255,255,255,0.4);
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  .reveal-btn, .next-btn {
+    display: block;
+    margin: 0 auto;
+    background: transparent;
+    border: 2px solid var(--gold);
+    border-radius: 50px;
+    padding: 14px 44px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--gold);
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+
+  .reveal-btn:hover, .next-btn:hover {
+    background: var(--gold);
+    color: var(--deep);
+  }
+
+  /* LEADERBOARD */
+  #leaderboard-screen { display: none; min-height: 100vh; padding: 2rem; }
+
+  .lb-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 900;
+    text-align: center;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 2rem;
+  }
+
+  .lb-list { max-width: 600px; margin: 0 auto 2rem; }
+
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    background: rgba(255,248,240,0.05);
+    border: 1px solid rgba(212,168,67,0.15);
+    animation: slideIn 0.4s ease backwards;
+  }
+
+  .lb-row:nth-child(1) { background: rgba(212,168,67,0.2); border-color: var(--gold); }
+  .lb-row:nth-child(2) { background: rgba(192,192,192,0.15); border-color: #aaa; }
+  .lb-row:nth-child(3) { background: rgba(184,115,51,0.15); border-color: #b87333; }
+
+  @keyframes slideIn {
+    from { transform: translateX(-30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .lb-rank {
+    font-size: 22px;
+    font-weight: 900;
+    width: 36px;
+    text-align: center;
+    color: var(--gold);
+  }
+
+  .lb-name { flex: 1; font-size: 18px; font-weight: 700; }
+  .lb-score { font-size: 20px; font-weight: 800; color: var(--gold-light); }
+
+  /* FINAL SCREEN */
+  #final-screen {
+    display: none;
+    min-height: 100vh;
+    padding: 2rem;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .winner-crown { font-size: 64px; margin-bottom: 1rem; animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+  .winner-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Live answer count ticker */
+  .live-count {
+    text-align: center;
+    font-size: 15px;
+    color: rgba(255,248,240,0.5);
+    margin-bottom: 1rem;
+  }
+  .live-count span { color: var(--sage-light); font-weight: 800; font-size: 20px; }
+
+  .ornament { color: var(--gold); opacity: 0.4; font-size: 24px; letter-spacing: 8px; margin: 1rem 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div class="cross-icon">✝</div>
+  <div class="title-main">He Is Risen!</div>
+  <div class="title-sub">Easter Fellowship Quiz</div>
+
+  <div class="room-code-box">
+    <div class="room-code-label">Join with code</div>
+    <div class="room-code-value" id="room-code-display">...</div>
+    <div class="join-url">Open <span id="join-url-display">player.html</span> and enter this code</div>
+  </div>
+
+  <div class="players-section">
+    <div class="players-label">Players joined</div>
+    <div class="players-count"><span id="player-count">0</span> players</div>
+    <div class="players-grid" id="players-grid"></div>
+  </div>
+
+  <button class="start-btn" id="start-btn" onclick="startGame()" disabled>
+    Start the Quiz ✝
+  </button>
+</div>
+
+<!-- GAME -->
+<div id="game-screen">
+  <div class="game-top">
+    <div class="q-counter">Question <span id="q-num">1</span> of <span id="q-total">25</span></div>
+    <div class="timer-circle">
+      <svg width="72" height="72" viewBox="0 0 72 72">
+        <circle class="timer-bg" cx="36" cy="36" r="32"/>
+        <circle class="timer-fg" id="timer-ring" cx="36" cy="36" r="32"/>
+      </svg>
+      <div class="timer-num" id="timer-display">20</div>
+    </div>
+    <div class="answer-counts" id="answer-counts">Waiting for answers...</div>
+  </div>
+
+  <div class="question-box">
+    <div class="q-category" id="q-category">Easter Story</div>
+    <div class="q-text" id="q-text"></div>
+  </div>
+
+  <div class="live-count">Answered: <span id="live-answered">0</span> / <span id="live-total">0</span></div>
+
+  <div class="answers-grid" id="answers-grid"></div>
+
+  <button class="reveal-btn" id="reveal-btn" onclick="revealAnswer()">Reveal Answer</button>
+  <button class="next-btn" id="next-btn" onclick="nextQuestion()" style="display:none; margin-top:12px;">
+    Next Question →
+  </button>
+</div>
+
+<!-- LEADERBOARD (between questions) -->
+<div id="leaderboard-screen">
+  <div class="lb-title">⚜ Leaderboard ⚜</div>
+  <div class="lb-list" id="lb-list"></div>
+  <div style="text-align:center">
+    <button class="next-btn" onclick="showNextQuestion()">Continue →</button>
+  </div>
+</div>
+
+<!-- FINAL -->
+<div id="final-screen" style="display:flex">
+  <div id="final-content" style="display:none">
+    <div class="winner-crown">👑</div>
+    <div style="font-size:18px; color:rgba(255,248,240,0.6); letter-spacing:2px; text-transform:uppercase; margin-bottom:0.5rem">Winner</div>
+    <div class="winner-name" id="winner-name"></div>
+    <div class="ornament">✦ ✝ ✦</div>
+    <div class="lb-title" style="margin-bottom:1rem">Final Scores</div>
+    <div class="lb-list" id="final-lb-list"></div>
+  </div>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, get, onValue, update, push, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── PASTE YOUR FIREBASE CONFIG BELOW ──────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCVwbnsXRdGe7rh8Hl4r35f9C6u128t3yY",
+  authDomain: "easter-fellowship-game.firebaseapp.com",
+  databaseURL: "https://easter-fellowship-game-default-rtdb.firebaseio.com",
+  projectId: "easter-fellowship-game",
+  storageBucket: "easter-fellowship-game.firebasestorage.app",
+  messagingSenderId: "483389250700",
+  appId: "1:483389250700:web:b06f90b13cd8c335ad2fa9"
+};
+// ──────────────────────────────────────────────────────────────────────────
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const QUESTIONS = [
+  // ── ORIGINAL QUESTIONS ────────────────────────────────────────────────
+  { cat: "Easter Story", q: "Who was the disciple that cut off a soldier's ear when they came to arrest Jesus?", a: ["Peter","John","Judas","Thomas"], c: 0 },
+  { cat: "Easter Story", q: "To which disciple did Jesus say 'This is your mother now'?", a: ["John","Peter","Matthew","Andrew"], c: 0 },
+  { cat: "Easter Story", q: "Which of these did NOT happen at the time Jesus died?", a: ["A Roman officer went to tell Pilate what happened","The curtain in the temple tore in half","The sky darkened","Dead people rose and appeared to people in the city"], c: 0 },
+  { cat: "Easter Story", q: "What was the name of the road Jesus walked on after his resurrection with two disciples?", a: ["Emmaus","Damascus","Jericho","Bethlehem"], c: 0 },
+  { cat: "Easter Story", q: "What were the names of the disciples who walked with Jesus on the road to Emmaus?", a: ["Cleopas and an unnamed disciple","Peter and John","James and Andrew","Thomas and Nathanael"], c: 0 },
+  // ── CONFIRMED ADDITIONS ───────────────────────────────────────────────
+  { cat: "Easter Story", q: "How many days after his crucifixion did Jesus rise from the dead?", a: ["3 days","2 days","7 days","40 days"], c: 0 },
+  { cat: "Easter Story", q: "Who was the first person to see Jesus after his resurrection?", a: ["Mary Magdalene","Peter","John","Mary, the mother of Jesus"], c: 0 },
+  { cat: "Easter Story", q: "What did the angel say to the women at the empty tomb?", a: ["He is not here; he has risen!","Do not be afraid, he has ascended to heaven","Go back to Jerusalem and wait","He has gone ahead of you to Galilee, stay here"], c: 0 },
+  { cat: "Discipleship", q: "What did Thomas say he needed before he would believe Jesus had risen?", a: ["To touch Jesus' wounds","To see Jesus walk on water","To hear Jesus speak his name","To see Jesus eat bread"], c: 0 },
+  { cat: "Easter Story", q: "How many days did Jesus spend with his disciples after his resurrection before ascending?", a: ["40 days","7 days","3 days","30 days"], c: 0 },
+  { cat: "Easter Story", q: "What did Jesus do to prove it was not just a spiritual resurrection but a physical bodily resurrection?", a: ["Ate fish in front of his disciples","Walked through a locked door","Appeared in a bright light","Spoke in a transformed voice"], c: 0 },
+  { cat: "Easter Story", q: "Where did Jesus tell his disciples to meet him after his resurrection?", a: ["Galilee","Jerusalem","Bethlehem","Nazareth"], c: 0 },
+  { cat: "Theology", q: "What is the significance of the temple curtain tearing in half when Jesus died?", a: ["The old system of priests being the only ones who could enter God's presence was ended","The Levitical priesthood had fulfilled its sacred purpose","The sacrificial system had reached its eternal completion","The Holy of Holies was now open to the Gentile nations"], c: 0 },
+  { cat: "Crucifixion", q: "What was written on the sign above Jesus' cross?", a: ["Jesus of Nazareth, King of the Jews","Jesus the Prophet of Galilee","Jesus the Messiah, Son of David","Jesus the Nazarene, Teacher of Israel"], c: 0 },
+  { cat: "Crucifixion", q: "How many pieces of silver was Jesus betrayed for?", a: ["30","20","40","50"], c: 0 },
+  { cat: "Easter Story", q: "What was the name of the garden where Jesus was arrested?", a: ["Gethsemane","Eden","Bethany","Kidron"], c: 0 },
+  { cat: "Crucifixion", q: "What did the soldiers offer Jesus to drink on the cross?", a: ["Wine mixed with gall","Water","Vinegar and hyssop","Bitter herbs"], c: 0 },
+  { cat: "Crucifixion", q: "Who was released instead of Jesus when Pilate gave the crowd a choice?", a: ["Barabbas","Judas","Silas","Caiaphas"], c: 0 },
+  { cat: "Easter Story", q: "Who asked Pilate for Jesus' body after the crucifixion?", a: ["Joseph of Arimathea","Nicodemus","Mary Magdalene","The chief priests"], c: 0 },
+  { cat: "Crucifixion", q: "What did the soldiers do with Jesus' clothes?", a: ["Cast lots for them","Burned them","Gave them to Mary","Divided them equally and kept one piece each"], c: 0 },
+  // ── APOLOGETICS ───────────────────────────────────────────────────────
+  { cat: "Apologetics", q: "What Roman historian mentioned Jesus' execution under Pontius Pilate?", a: ["Tacitus","Josephus","Suetonius","Pliny the Younger"], c: 0 },
+  { cat: "Apologetics", q: "What Jewish historian wrote about Jesus being a doer of wonderful works who was condemned by Pilate?", a: ["Josephus","Tacitus","Philo","Herodotus"], c: 0 },
+  { cat: "Apologetics", q: "What is the 'criterion of embarrassment' used by historians to argue for the resurrection?", a: ["Women were the first witnesses — no one would invent this since women's testimony was dismissed in that culture","The disciples were afraid and went into hiding","Jesus was buried in a borrowed tomb","The crucifixion was a shameful death no one would fabricate"], c: 0 },
+  { cat: "Apologetics", q: "Why is the empty tomb in Jerusalem significant as historical evidence?", a: ["The disciples could not have preached the resurrection there if the tomb was not empty — enemies would have produced the body","It proved Jesus was buried honorably","It showed the Romans had no power over him","It fulfilled prophecy about his burial place"], c: 0 },
+  { cat: "Apologetics", q: "What early creed in 1 Corinthians 15 is dated by scholars to within a few years of the crucifixion?", a: ["The creed listing appearances to Peter, the twelve, 500 people, James, and Paul","The Nicene Creed","The Apostles' Creed","The Didache"], c: 0 },
+];
+
+const TIMER_SECS = 20;
+const CIRCUMFERENCE = 201;
+
+let roomCode = '';
+let currentQ = 0;
+let timerInterval = null;
+let timeLeft = TIMER_SECS;
+let players = {};
+let answersThisRound = {};
+let revealed = false;
+
+function generateCode() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+async function init() {
+  roomCode = generateCode();
+  document.getElementById('room-code-display').textContent = roomCode;
+  document.getElementById('join-url-display').textContent = `player.html — code: ${roomCode}`;
+  document.getElementById('q-total').textContent = QUESTIONS.length;
+
+  const gameRef = ref(db, `games/${roomCode}`);
+  await set(gameRef, {
+    status: 'lobby',
+    currentQ: -1,
+    totalQ: QUESTIONS.length,
+    phase: 'waiting'
+  });
+
+  // Watch players
+  onValue(ref(db, `games/${roomCode}/players`), snap => {
+    players = snap.val() || {};
+    renderPlayers();
+  });
+
+  // Watch answers during question
+  onValue(ref(db, `games/${roomCode}/answers`), snap => {
+    answersThisRound = snap.val() || {};
+    updateAnswerCounts();
+  });
+}
+
+function renderPlayers() {
+  const grid = document.getElementById('players-grid');
+  const count = Object.keys(players).length;
+  document.getElementById('player-count').textContent = count;
+  grid.innerHTML = Object.values(players).map(p =>
+    `<div class="player-chip">${p.name}</div>`
+  ).join('');
+  document.getElementById('start-btn').disabled = count < 1;
+}
+
+function updateAnswerCounts() {
+  const total = Object.keys(players).length;
+  const answered = Object.keys(answersThisRound).length;
+  document.getElementById('live-answered').textContent = answered;
+  document.getElementById('live-total').textContent = total;
+
+  // Update answer bars
+  const counts = [0,0,0,0];
+  Object.values(answersThisRound).forEach(a => { if (a.answer !== undefined) counts[a.answer]++; });
+  counts.forEach((c, i) => {
+    const bar = document.getElementById(`bar-${i}`);
+    if (bar) bar.style.width = total > 0 ? `${(c/total)*100}%` : '0%';
+  });
+}
+
+window.startGame = async function() {
+  await update(ref(db, `games/${roomCode}`), { status: 'playing' });
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'block';
+  loadQuestion(0);
+}
+
+function loadQuestion(idx) {
+  currentQ = idx;
+  revealed = false;
+  answersThisRound = {};
+
+  const q = QUESTIONS[idx];
+  document.getElementById('q-num').textContent = idx + 1;
+  document.getElementById('q-category').textContent = q.cat;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('live-answered').textContent = 0;
+  document.getElementById('live-total').textContent = Object.keys(players).length;
+  document.getElementById('reveal-btn').style.display = 'block';
+  document.getElementById('next-btn').style.display = 'none';
+
+  const grid = document.getElementById('answers-grid');
+  const shapes = ['▲','●','■','✦'];
+  grid.innerHTML = q.a.map((ans, i) => `
+    <div class="answer-tile a${i}" id="tile-${i}">
+      <div class="answer-shape">${shapes[i]}</div>
+      <span>${ans}</span>
+      <div class="answer-bar" id="bar-${i}"></div>
+    </div>
+  `).join('');
+
+  // Push question to Firebase
+  update(ref(db, `games/${roomCode}`), {
+    currentQ: idx,
+    phase: 'answering',
+    question: q.q,
+    answers: q.a,
+    correctIndex: -1 // hidden until reveal
+  });
+
+  // Clear previous answers
+  set(ref(db, `games/${roomCode}/answers`), null);
+
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft = TIMER_SECS;
+  const ring = document.getElementById('timer-ring');
+
+  timerInterval = setInterval(() => {
+    timeLeft -= 0.1;
+    const progress = Math.max(0, timeLeft / TIMER_SECS);
+    if (ring) ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    document.getElementById('timer-display').textContent = Math.ceil(timeLeft);
+
+    // Color shift as time runs out
+    if (timeLeft <= 5) ring.style.stroke = '#C0546A';
+    else if (timeLeft <= 10) ring.style.stroke = '#D4A843';
+    else ring.style.stroke = '#5A8A5E';
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      revealAnswer();
+    }
+  }, 100);
+}
+
+window.revealAnswer = function() {
+  if (revealed) return;
+  revealed = true;
+  clearInterval(timerInterval);
+
+  const q = QUESTIONS[currentQ];
+
+  // Reveal correct answer to players
+  update(ref(db, `games/${roomCode}`), {
+    phase: 'revealed',
+    correctIndex: q.c
+  });
+
+  // Highlight tiles
+  q.a.forEach((_, i) => {
+    const tile = document.getElementById(`tile-${i}`);
+    if (tile) tile.classList.add(i === q.c ? 'correct' : 'wrong');
+  });
+
+  // Score players
+  const now = Date.now();
+  const scoreUpdates = {};
+  Object.entries(answersThisRound).forEach(([uid, data]) => {
+    if (data.answer === q.c) {
+      const speed = Math.max(0, TIMER_SECS - (data.time || TIMER_SECS));
+      const pts = Math.round(500 + (speed / TIMER_SECS) * 500);
+      const current = players[uid]?.score || 0;
+      scoreUpdates[`games/${roomCode}/players/${uid}/score`] = current + pts;
+    }
+  });
+  if (Object.keys(scoreUpdates).length > 0) update(ref(db), scoreUpdates);
+
+  document.getElementById('reveal-btn').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'block';
+}
+
+window.nextQuestion = function() {
+  showLeaderboard();
+}
+
+function showLeaderboard() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('leaderboard-screen').style.display = 'block';
+
+  const sorted = Object.values(players).sort((a,b) => (b.score||0) - (a.score||0)).slice(0,10);
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('lb-list').innerHTML = sorted.map((p,i) => `
+    <div class="lb-row" style="animation-delay:${i*0.07}s">
+      <div class="lb-rank">${medals[i] || i+1}</div>
+      <div class="lb-name">${p.name}</div>
+      <div class="lb-score">${(p.score||0).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+window.showNextQuestion = function() {
+  if (currentQ + 1 >= QUESTIONS.length) {
+    showFinal();
+  } else {
+    document.getElementById('leaderboard-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    loadQuestion(currentQ + 1);
+  }
+}
+
+function showFinal() {
+  update(ref(db, `games/${roomCode}`), { status: 'finished', phase: 'finished' });
+  document.getElementById('leaderboard-screen').style.display = 'none';
+  const finalScreen = document.getElementById('final-screen');
+  finalScreen.style.display = 'flex';
+  document.getElementById('final-content').style.display = 'block';
+
+  const sorted = Object.values(players).sort((a,b) => (b.score||0) - (a.score||0));
+  document.getElementById('winner-name').textContent = sorted[0]?.name || 'Everyone!';
+  document.getElementById('final-lb-list').innerHTML = sorted.map((p,i) => `
+    <div class="lb-row" style="animation-delay:${i*0.08}s">
+      <div class="lb-rank">${['🥇','🥈','🥉'][i] || i+1}</div>
+      <div class="lb-name">${p.name}</div>
+      <div class="lb-score">${(p.score||0).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+init();
+</script>
+</body>
+</html>

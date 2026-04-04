@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Easter Quiz — Join</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #D4A843;
+    --gold-light: #F5D98B;
+    --rose: #C0546A;
+    --rose-light: #F2A0B0;
+    --sage: #5A8A5E;
+    --sage-light: #A8D4AB;
+    --sky: #4A7FB5;
+    --cream: #FFF8F0;
+    --deep: #2C1810;
+    --parchment: #F5EDD8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--deep);
+    color: var(--cream);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(212,168,67,0.1) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 70%, rgba(192,84,106,0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .screen {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  /* JOIN SCREEN */
+  .cross { font-size: 40px; margin-bottom: 1rem; }
+
+  .title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,248,240,0.5);
+    margin-bottom: 2rem;
+  }
+
+  .input-group { width: 100%; max-width: 320px; margin-bottom: 1rem; }
+
+  .input-label {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 8px;
+    text-align: left;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: rgba(255,248,240,0.07);
+    border: 1.5px solid rgba(212,168,67,0.4);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cream);
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+
+  input[type="text"]::placeholder { color: rgba(255,248,240,0.3); }
+  input[type="text"]:focus { border-color: var(--gold); }
+
+  .code-input {
+    text-align: center;
+    letter-spacing: 8px;
+    font-size: 28px !important;
+  }
+
+  .join-btn {
+    width: 100%;
+    max-width: 320px;
+    background: linear-gradient(135deg, var(--gold), var(--rose));
+    border: none;
+    border-radius: 50px;
+    padding: 16px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .join-btn:active { transform: scale(0.97); }
+  .join-btn:disabled { opacity: 0.5; }
+
+  .error-msg {
+    color: var(--rose-light);
+    font-size: 14px;
+    margin-top: 0.75rem;
+    min-height: 20px;
+  }
+
+  /* WAITING SCREEN */
+  .waiting-cross {
+    font-size: 56px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.95); } }
+
+  .waiting-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gold-light);
+    margin: 1rem 0 0.5rem;
+  }
+
+  .waiting-msg {
+    font-size: 16px;
+    color: rgba(255,248,240,0.5);
+    line-height: 1.6;
+  }
+
+  .dot-loader { display: flex; gap: 8px; justify-content: center; margin-top: 1.5rem; }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; background: var(--rose); }
+  .dot:nth-child(3) { animation-delay: 0.4s; background: var(--sage); }
+  @keyframes bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-12px); } }
+
+  /* QUESTION SCREEN */
+  #question-screen {
+    padding: 0;
+    justify-content: flex-start;
+  }
+
+  .q-header {
+    width: 100%;
+    background: rgba(255,248,240,0.04);
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(212,168,67,0.15);
+  }
+
+  .q-info { font-size: 13px; color: rgba(255,248,240,0.5); }
+  .q-info span { color: var(--gold); font-weight: 800; }
+
+  .timer-pill {
+    background: rgba(212,168,67,0.15);
+    border: 1px solid var(--gold);
+    border-radius: 50px;
+    padding: 6px 16px;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--gold-light);
+    min-width: 56px;
+    text-align: center;
+    transition: color 0.3s, border-color 0.3s, background 0.3s;
+  }
+
+  .timer-pill.urgent {
+    border-color: var(--rose);
+    color: var(--rose-light);
+    background: rgba(192,84,106,0.15);
+    animation: shake 0.3s ease-in-out;
+  }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+  .q-body {
+    flex: 1;
+    width: 100%;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .q-text-player {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(16px, 4vw, 22px);
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .answer-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    flex: 1;
+    align-content: start;
+  }
+
+  .ans-btn {
+    border: none;
+    border-radius: 16px;
+    padding: 1rem 0.75rem;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 3.5vw, 16px);
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.15s, opacity 0.2s;
+    min-height: 90px;
+    justify-content: center;
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  .ans-btn:active:not(:disabled) { transform: scale(0.95); }
+  .ans-btn:disabled { cursor: default; }
+
+  .ans-btn.b0 { background: var(--sky); color: white; }
+  .ans-btn.b1 { background: var(--rose); color: white; }
+  .ans-btn.b2 { background: var(--sage); color: white; }
+  .ans-btn.b3 { background: var(--gold); color: var(--deep); }
+
+  .ans-btn.selected { transform: scale(0.95); opacity: 0.8; }
+  .ans-btn.correct-ans { filter: brightness(1.2); transform: scale(1.03); }
+  .ans-btn.wrong-ans { opacity: 0.3; filter: grayscale(0.5); }
+  .ans-btn.reveal-correct { filter: brightness(1.3); box-shadow: 0 0 20px rgba(90,138,94,0.6); }
+
+  .btn-shape { font-size: 20px; }
+
+  /* RESULT SCREEN */
+  .result-icon { font-size: 64px; margin-bottom: 0.75rem; animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes popIn { from { transform:scale(0); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+  .result-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .result-pts {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--gold-light);
+    margin-bottom: 0.5rem;
+  }
+
+  .result-total {
+    font-size: 15px;
+    color: rgba(255,248,240,0.5);
+  }
+
+  .result-total span { color: var(--sage-light); font-weight: 800; }
+
+  /* FINISHED */
+  .finished-cross { font-size: 64px; animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  .finished-score {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--gold-light);
+    margin: 1rem 0 0.25rem;
+  }
+
+  .finished-msg {
+    font-size: 16px;
+    color: rgba(255,248,240,0.6);
+  }
+</style>
+</head>
+<body>
+
+<!-- JOIN -->
+<div class="screen" id="join-screen">
+  <div class="cross">✝</div>
+  <div class="title">He Is Risen!</div>
+  <div class="subtitle">Easter Fellowship Quiz</div>
+
+  <div class="input-group">
+    <label class="input-label">Room Code</label>
+    <input type="text" id="code-input" class="code-input" placeholder="0000" maxlength="4" inputmode="numeric" />
+  </div>
+
+  <div class="input-group">
+    <label class="input-label">Your Name</label>
+    <input type="text" id="name-input" placeholder="Enter your name" maxlength="20" />
+  </div>
+
+  <button class="join-btn" onclick="joinGame()">Join Quiz →</button>
+  <div class="error-msg" id="error-msg"></div>
+</div>
+
+<!-- WAITING -->
+<div class="screen" id="waiting-screen" style="display:none">
+  <div class="waiting-cross">✝</div>
+  <div class="waiting-name" id="waiting-name"></div>
+  <div class="waiting-msg">You're in!<br>Waiting for the host to start...</div>
+  <div class="dot-loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+</div>
+
+<!-- QUESTION -->
+<div class="screen" id="question-screen" style="display:none">
+  <div class="q-header">
+    <div class="q-info">Q <span id="pq-num">1</span> of <span id="pq-total">25</span></div>
+    <div class="timer-pill" id="player-timer">20</div>
+    <div class="q-info" id="pq-score-display">Score: <span>0</span></div>
+  </div>
+  <div class="q-body">
+    <div class="q-text-player" id="pq-text"></div>
+    <div class="answer-buttons" id="pq-answers"></div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="result-screen" style="display:none">
+  <div class="result-icon" id="result-icon">✝</div>
+  <div class="result-label" id="result-label"></div>
+  <div class="result-pts" id="result-pts"></div>
+  <div class="result-total">Total: <span id="result-total-score">0</span> pts</div>
+</div>
+
+<!-- FINISHED -->
+<div class="screen" id="finished-screen" style="display:none">
+  <div class="finished-cross">✝</div>
+  <div class="title" style="margin-top:1rem">Quiz Complete!</div>
+  <div class="finished-score" id="finished-score">0</div>
+  <div class="finished-msg">Thank you for playing!<br>He is risen indeed. 🌿</div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, update, onValue, get } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── PASTE YOUR FIREBASE CONFIG BELOW ──────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCVwbnsXRdGe7rh8Hl4r35f9C6u128t3yY",
+  authDomain: "easter-fellowship-game.firebaseapp.com",
+  databaseURL: "https://easter-fellowship-game-default-rtdb.firebaseio.com",
+  projectId: "easter-fellowship-game",
+  storageBucket: "easter-fellowship-game.firebasestorage.app",
+  messagingSenderId: "483389250700",
+  appId: "1:483389250700:web:b06f90b13cd8c335ad2fa9"
+};
+// ──────────────────────────────────────────────────────────────────────────
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let roomCode = '';
+let myUID = '';
+let myName = '';
+let myScore = 0;
+let hasAnswered = false;
+let answerStartTime = 0;
+let timerInterval = null;
+let currentPhase = '';
+let currentQ = -1;
+
+// Generate a simple UID
+function uid() { return Math.random().toString(36).substr(2,9); }
+
+window.joinGame = async function() {
+  const code = document.getElementById('code-input').value.trim();
+  const name = document.getElementById('name-input').value.trim();
+  const err = document.getElementById('error-msg');
+
+  if (!code || code.length !== 4) { err.textContent = 'Please enter a 4-digit room code.'; return; }
+  if (!name) { err.textContent = 'Please enter your name.'; return; }
+
+  err.textContent = '';
+
+  const gameSnap = await get(ref(db, `games/${code}`));
+  if (!gameSnap.exists()) { err.textContent = 'Room not found. Check the code!'; return; }
+
+  const game = gameSnap.val();
+  if (game.status === 'finished') { err.textContent = 'This game has already ended.'; return; }
+
+  roomCode = code;
+  myUID = uid();
+  myName = name;
+
+  await set(ref(db, `games/${roomCode}/players/${myUID}`), {
+    name: myName,
+    score: 0,
+    joinedAt: Date.now()
+  });
+
+  document.getElementById('join-screen').style.display = 'none';
+  document.getElementById('waiting-screen').style.display = 'flex';
+  document.getElementById('waiting-name').textContent = `Welcome, ${myName}! ✝`;
+
+  // Watch game state
+  onValue(ref(db, `games/${roomCode}`), snap => {
+    const g = snap.val();
+    if (!g) return;
+
+    if (g.status === 'playing' && g.phase === 'answering' && g.currentQ !== currentQ) {
+      currentQ = g.currentQ;
+      hasAnswered = false;
+      answerStartTime = Date.now();
+      showQuestion(g);
+    }
+
+    if (g.phase === 'revealed' && g.correctIndex !== undefined && g.correctIndex !== -1) {
+      showReveal(g.correctIndex);
+    }
+
+    if (g.status === 'finished') {
+      showFinished();
+    }
+  });
+
+  // Watch own score
+  onValue(ref(db, `games/${roomCode}/players/${myUID}/score`), snap => {
+    myScore = snap.val() || 0;
+    const el = document.getElementById('pq-score-display');
+    if (el) el.innerHTML = `Score: <span>${myScore.toLocaleString()}</span>`;
+    document.getElementById('result-total-score').textContent = myScore.toLocaleString();
+    document.getElementById('finished-score').textContent = myScore.toLocaleString() + ' pts';
+  });
+}
+
+function showQuestion(g) {
+  clearInterval(timerInterval);
+  document.getElementById('waiting-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('question-screen').style.display = 'flex';
+
+  document.getElementById('pq-num').textContent = (g.currentQ || 0) + 1;
+  document.getElementById('pq-total').textContent = g.totalQ || 25;
+  document.getElementById('pq-text').textContent = g.question;
+
+  const shapes = ['▲','●','■','✦'];
+  const colors = ['b0','b1','b2','b3'];
+  document.getElementById('pq-answers').innerHTML = (g.answers || []).map((ans, i) => `
+    <button class="ans-btn ${colors[i]}" id="pbtn-${i}" onclick="submitAnswer(${i})">
+      <span class="btn-shape">${shapes[i]}</span>
+      <span>${ans}</span>
+    </button>
+  `).join('');
+
+  // Timer
+  let t = 20;
+  const timerEl = document.getElementById('player-timer');
+  timerEl.className = 'timer-pill';
+  timerEl.textContent = t;
+
+  timerInterval = setInterval(() => {
+    t -= 1;
+    if (timerEl) {
+      timerEl.textContent = t;
+      if (t <= 5) timerEl.className = 'timer-pill urgent';
+    }
+    if (t <= 0) {
+      clearInterval(timerInterval);
+      if (!hasAnswered) timeExpired();
+    }
+  }, 1000);
+}
+
+window.submitAnswer = function(i) {
+  if (hasAnswered) return;
+  hasAnswered = true;
+  clearInterval(timerInterval);
+
+  const elapsed = (Date.now() - answerStartTime) / 1000;
+
+  // Dim all, highlight selected
+  document.querySelectorAll('.ans-btn').forEach((b, idx) => {
+    b.disabled = true;
+    if (idx !== i) b.classList.add('wrong-ans');
+    else b.classList.add('selected');
+  });
+
+  // Submit to Firebase
+  set(ref(db, `games/${roomCode}/answers/${myUID}`), {
+    answer: i,
+    time: elapsed
+  });
+}
+
+function timeExpired() {
+  hasAnswered = true;
+  document.querySelectorAll('.ans-btn').forEach(b => { b.disabled = true; b.classList.add('wrong-ans'); });
+}
+
+function showReveal(correctIdx) {
+  clearInterval(timerInterval);
+
+  document.querySelectorAll('.ans-btn').forEach((b, i) => {
+    b.disabled = true;
+    b.classList.remove('selected','wrong-ans');
+    if (i === correctIdx) b.classList.add('reveal-correct');
+    else b.classList.add('wrong-ans');
+  });
+
+  const myAnswerSnap = document.querySelector('.ans-btn.selected, .ans-btn.reveal-correct.selected');
+  const myAnswerIdx = Array.from(document.querySelectorAll('.ans-btn')).findIndex(b => b.classList.contains('selected') || (b.classList.contains('reveal-correct') && hasAnswered));
+
+  setTimeout(() => {
+    document.getElementById('question-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'flex';
+
+    const gotIt = myAnswerIdx === correctIdx && hasAnswered;
+    document.getElementById('result-icon').textContent = gotIt ? '🌟' : '✝';
+    document.getElementById('result-label').textContent = gotIt ? 'Correct!' : (hasAnswered ? 'Not quite!' : "Time's up!");
+    document.getElementById('result-label').style.color = gotIt ? 'var(--sage-light)' : 'var(--rose-light)';
+    document.getElementById('result-pts').textContent = gotIt ? '+points added!' : '';
+  }, 1500);
+}
+
+function showFinished() {
+  clearInterval(timerInterval);
+  document.getElementById('question-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('waiting-screen').style.display = 'none';
+  document.getElementById('finished-screen').style.display = 'flex';
+}
+
+// Auto-focus code input
+document.getElementById('code-input').focus();
+</script>
+</body>
+</html>
