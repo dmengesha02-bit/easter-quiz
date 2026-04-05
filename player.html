@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -359,7 +360,11 @@
   <div class="result-icon" id="result-icon">✝</div>
   <div class="result-label" id="result-label"></div>
   <div class="result-pts" id="result-pts"></div>
-  <div class="result-total">Total: <span id="result-total-score">0</span> pts</div>
+  <div style="margin-top: 1.5rem; background: rgba(212,168,67,0.12); border: 1.5px solid var(--gold); border-radius: 16px; padding: 1rem 2rem; text-align:center;">
+    <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin-bottom:4px;">Total Score</div>
+    <div style="font-size:40px; font-weight:800; color:var(--gold-light);" id="result-total-score">0</div>
+    <div style="font-size:13px; color:rgba(255,248,240,0.4);">points</div>
+  </div>
 </div>
 
 <!-- FINISHED -->
@@ -463,6 +468,16 @@ window.joinGame = async function() {
   });
 }
 
+function shuffleColors(qIndex) {
+  // Deterministic shuffle based on question index so host & player always match
+  const orders = [
+    [0,1,2,3],[1,2,3,0],[2,3,0,1],[3,0,1,2],
+    [0,2,1,3],[1,3,0,2],[2,0,3,1],[3,1,2,0],
+    [0,3,2,1],[1,0,3,2],[2,1,0,3],[3,2,1,0]
+  ];
+  return orders[qIndex % orders.length];
+}
+
 function showQuestion(g) {
   clearInterval(timerInterval);
   document.getElementById('waiting-screen').style.display = 'none';
@@ -474,10 +489,10 @@ function showQuestion(g) {
   document.getElementById('pq-text').textContent = g.question;
 
   const shapes = ['▲','●','■','✦'];
-  const colors = ['b0','b1','b2','b3'];
+  const colorOrder = shuffleColors(g.currentQ || 0);
   document.getElementById('pq-answers').innerHTML = (g.answers || []).map((ans, i) => `
-    <button class="ans-btn ${colors[i]}" id="pbtn-${i}" onclick="submitAnswer(${i})">
-      <span class="btn-shape">${shapes[i]}</span>
+    <button class="ans-btn b${colorOrder[i]}" id="pbtn-${i}" onclick="submitAnswer(${i})">
+      <span class="btn-shape">${shapes[colorOrder[i]]}</span>
       <span>${ans}</span>
     </button>
   `).join('');
@@ -530,25 +545,41 @@ function timeExpired() {
 function showReveal(correctIdx) {
   clearInterval(timerInterval);
 
-  document.querySelectorAll('.ans-btn').forEach((b, i) => {
+  // Find which button the player selected (before we restyle)
+  const btns = Array.from(document.querySelectorAll('.ans-btn'));
+  const selectedIdx = btns.findIndex(b => b.classList.contains('selected'));
+  const gotIt = hasAnswered && selectedIdx === correctIdx;
+
+  // Restyle buttons to show correct answer
+  btns.forEach((b, i) => {
     b.disabled = true;
-    b.classList.remove('selected','wrong-ans');
+    b.classList.remove('selected', 'wrong-ans');
     if (i === correctIdx) b.classList.add('reveal-correct');
     else b.classList.add('wrong-ans');
   });
-
-  const myAnswerSnap = document.querySelector('.ans-btn.selected, .ans-btn.reveal-correct.selected');
-  const myAnswerIdx = Array.from(document.querySelectorAll('.ans-btn')).findIndex(b => b.classList.contains('selected') || (b.classList.contains('reveal-correct') && hasAnswered));
 
   setTimeout(() => {
     document.getElementById('question-screen').style.display = 'none';
     document.getElementById('result-screen').style.display = 'flex';
 
-    const gotIt = myAnswerIdx === correctIdx && hasAnswered;
-    document.getElementById('result-icon').textContent = gotIt ? '🌟' : '✝';
-    document.getElementById('result-label').textContent = gotIt ? 'Correct!' : (hasAnswered ? 'Not quite!' : "Time's up!");
-    document.getElementById('result-label').style.color = gotIt ? 'var(--sage-light)' : 'var(--rose-light)';
-    document.getElementById('result-pts').textContent = gotIt ? '+points added!' : '';
+    if (gotIt) {
+      document.getElementById('result-icon').textContent = '🌟';
+      document.getElementById('result-label').textContent = 'Correct!';
+      document.getElementById('result-label').style.color = 'var(--sage-light)';
+      document.getElementById('result-pts').textContent = '+points added!';
+    } else if (!hasAnswered) {
+      document.getElementById('result-icon').textContent = '⏱️';
+      document.getElementById('result-label').textContent = "Time's up!";
+      document.getElementById('result-label').style.color = 'var(--rose-light)';
+      document.getElementById('result-pts').textContent = '+0 points';
+    } else {
+      document.getElementById('result-icon').textContent = '✝';
+      document.getElementById('result-label').textContent = 'Incorrect!';
+      document.getElementById('result-label').style.color = 'var(--rose-light)';
+      document.getElementById('result-pts').textContent = '+0 points';
+    }
+
+    document.getElementById('result-total-score').textContent = myScore.toLocaleString();
   }, 1500);
 }
 
